@@ -1,6 +1,8 @@
 // backend/server.js
 const express = require('express');
+const session = require('express-session');
 const mongoose = require('mongoose');
+const MongoStore = require('connect-mongo');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const multer = require('multer');
@@ -19,6 +21,15 @@ const mongoURI = 'mongodb://localhost:27017/exploration_bridge'; // Change this 
 mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.log(err));
+
+// Session management
+app.use(session({
+  secret: 'cmt_secret', // Change this to a strong secret
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({ mongoUrl: mongoURI }), // Store sessions in MongoDB
+  cookie: { maxAge: 180 * 60 * 1000 } // Session expiration time (3 hours)
+}));  
 
 // Define a schema for events and feedback
 const eventFeedbackSchema = new mongoose.Schema({
@@ -102,7 +113,7 @@ app.post('/api/feedback', async (req, res) => {
 });
 
 // POST endpoint for adding events/activities
-app.post('/api/events', async (req, res) => {
+app.post('/api/feedback', async (req, res) => {
     const { eventName, image, description, date, time, venue, capacity, isPastEvent } = req.body;
 
     try {
@@ -118,12 +129,15 @@ app.post('/api/events', async (req, res) => {
 // Set up storage for multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Specify the directory to save the uploaded files
+      const uploadsDir = path.join(__dirname, 'uploads'); // Ensure this path is correct
+      cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Append timestamp to the file name
+      cb(null, Date.now() + path.extname(file.originalname)); // Append timestamp to the file name
   },
 });
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Initialize multer
 const upload = multer({ storage });
@@ -131,14 +145,24 @@ const upload = multer({ storage });
 // POST endpoint for adding events/activities
 app.post('/api/events', upload.single('image'), async (req, res) => {
   const { eventName, description, date, time, venue, capacity, isPastEvent } = req.body;
-  const image = req.file.path; // Get the path of the uploaded image
+  const image = req.file ? req.file.path : null; // Get the path of the uploaded image
 
   try {
-    const newEvent = new EventFeedback({ eventName, image, description, date, time, venue, capacity, isPastEvent });
-    await newEvent.save();
-    res.status(201).json({ message: 'Event added successfully!' });
+      const newEvent = new EventFeedback({ eventName, image, description, date, time, venue, capacity, isPastEvent });
+      await newEvent.save();
+      res.status(201).json({ message: 'Event added successfully!' });
   } catch (error) {
-    res.status(500).json({ message: 'Error adding event', error });
+      res.status(500).json({ message: 'Error adding event', error });
+  }
+});
+
+// GET endpoint for fetching all events
+app.get('/api/events', async (req, res) => {
+  try {
+      const events = await EventFeedback.find(); // Fetch all events from the database
+      res.status(200).json(events); // Return the events as JSON
+  } catch (error) {
+      res.status(500).json({ message: 'Error fetching events', error });
   }
 });
 
@@ -180,6 +204,7 @@ app.post('/api/signin', async (req, res) => {
       if (user) {
           // Assuming you are hashing passwords, use bcrypt to compare
           const isMatch = await bcrypt.compare(password, user.password);
+          console.log(isMatch)
           if (isMatch) {
               // Return user email and role
               res.status(200).json({ message: 'Signed in successfully!', user: { email: user.email, role: user.role } });
@@ -197,12 +222,29 @@ app.post('/api/signin', async (req, res) => {
 
 // POST endpoint for registration 
 app.post('/api/register-activity', async (req, res) => {
-    const { fullName, email, phone, specialRequirements, eventId, userId} = req.body;
-
+    const { fullName, email, phone, specialRequirements, eventName} = req.body;
+    console.log(req.body)
     try {
-        const newRegistration = new Registration({ fullName, email, phone, specialRequirements, eventId, userId});
-        await newRegistration.save();
-        res.status(201).json({ message: 'Activity registered successfully!' });
+      // Fetch user by email
+      const user = await User.findOne({ email });
+      if (!user) {
+          return res.status(404).json({ message: 'User not found' });
+      }
+      const userId = user._id; // Get user ID
+      console.log('user ',userId)
+
+      // Fetch event by event name
+      const event = await EventFeedback.findOne({ eventName });
+      if (!event) {
+          return res.status(404).json({ message: 'Event not found' });
+      }
+      const eventId = event._id; // Get event ID
+      console.log(eventId)
+
+      const newRegistration = new Registration({ fullName, email, phone, specialRequirements, eventId, userId});
+      console.log(newRegistration)
+      await newRegistration.save();
+      res.status(201).json({ message: 'Activity registered successfully!' });
     } catch (error) {
         res.status(500).json({ message: 'Error registering activity', error });
     }
@@ -223,6 +265,36 @@ app.post('/api/comments', async (req, res) => {
     res.status(201).json({ message: 'Comment submitted successfully!' });
   } catch (error) {
     res.status(500).json({ message: 'Error submitting comment', error });
+  }
+});
+
+// GET endpoint for fetching a user by email
+app.get('/api/users', async (req, res) => {
+  const { email } = req.query; // Get email from query parameters
+
+  try {
+    const user = await User.findOne({ email }); // Find user by email
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.status(200).json(user); // Return the user object
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching user', error });
+  }
+});
+
+// GET endpoint for fetching an event by event name
+app.get('/api/events', async (req, res) => {
+  const { eventName } = req.query; // Get eventName from query parameters
+
+  try {
+    const event = await EventFeedback.findOne({ eventName }); // Find event by event name
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    res.status(200).json(event); // Return the event object
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching event', error });
   }
 });
 
