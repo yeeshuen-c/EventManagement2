@@ -8,6 +8,8 @@ const bodyParser = require('body-parser');
 const multer = require('multer');
 const path = require('path');
 const bcrypt = require('bcrypt'); // If you installed bcrypt
+const { body, validationResult } = require('express-validator');
+const escapeHtml = require('escape-html');
 
 // Create an instance of the Express app
 const app = express();
@@ -41,7 +43,7 @@ const eventFeedbackSchema = new mongoose.Schema({
   venue: { type: String, required: true },
   capacity: { type: Number, required: true },
   isPastEvent: { type: Boolean, required: true },
-  rating: { type: Number }, 
+  rating: { type: [Number] }, 
   feedback: { type: [String] }, // Changed to an array of strings
   experience: { type: [String] }, // Changed to an array of strings
   improvements: { type: [String] }, // Changed to an array of strings
@@ -71,7 +73,7 @@ const registrationSchema = new mongoose.Schema({
     specialRequirements: { type: String },
     eventId: { type: mongoose.Schema.Types.ObjectId, ref: "EventFeedback", required: true }, // FK to EventFeedback
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, // FK to User
-    comment: { type: String, required: true } // New comment field
+    comment: { type: String, required: false } // New comment field
 });
 
 // Create a model based on the registration schema
@@ -79,51 +81,49 @@ const Registration = mongoose.model('Registration', registrationSchema);
 
 // POST endpoint to receive user feedback
 app.post('/api/feedback', async (req, res) => {
-  const { eventName, rating, experience, improvements, wouldRecommend, category } = req.body;
-
+  const { eventName, rating, feedback, improvements, wouldRecommend } = req.body;
   try {
       // Fetch the existing event
       const existingEvent = await EventFeedback.findOne({ eventName });
-
+      // console.log(existingEvent)
       if (!existingEvent) {
           return res.status(404).json({ message: 'Event not found' });
       }
 
       // Calculate new average rating
-      const existingRatings = existingEvent.rating.map(Number); // Convert to numbers
+      const existingRatings = existingEvent.rating || []; // Use an empty array if no ratings exist
+      // console.log(existingRatings)
       existingRatings.push(rating); // Add the new rating
       const newAverageRating = (existingRatings.reduce((a, b) => a + b, 0) / existingRatings.length).toFixed(1); // Calculate average
-
       // // Update the event feedback
       // existingEvent.rating = existingRatings; // Update ratings array
       existingEvent.feedback = existingEvent.feedback ? [...existingEvent.feedback, ...feedback] : [...feedback]; // Append feedback
       existingEvent.improvements = existingEvent.improvements ? [...existingEvent.improvements, ...improvements] : [...improvements]; // Append improvements
-      existingEvent.experience = existingEvent.experience ? [...existingEvent.experience, experience] : [experience]; // Append experience
-      existingEvent.wouldRecommend = existingEvent.wouldRecommend ? [...existingEvent.wouldRecommend, wouldRecommend] : [wouldRecommend]; // Append would recommend
+     existingEvent.wouldRecommend = existingEvent.wouldRecommend ? [...existingEvent.wouldRecommend, wouldRecommend] : [wouldRecommend]; // Append would recommend
 
       // Update the average rating in the event
       existingEvent.rating = newAverageRating;
-
+      console.log(existingEvent)
       // Save the updated event
       await existingEvent.save();
-      res.status(200).json({ message: 'Feedback submitted successfully!', newAverageRating });
+      res.status(200).json({ message: 'Feedback submitted successfully!', existingEvent });
   } catch (error) {
       res.status(500).json({ message: 'Error saving feedback', error });
   }
 });
 
-// POST endpoint for adding events/activities
-app.post('/api/feedback', async (req, res) => {
-    const { eventName, image, description, date, time, venue, capacity, isPastEvent } = req.body;
+// // POST endpoint for adding events/activities
+// app.post('/api/feedback', async (req, res) => {
+//     const { eventName, image, description, date, time, venue, capacity, isPastEvent } = req.body;
 
-    try {
-        const newEvent = new EventFeedback({ eventName, image, description, date, time, venue, capacity, isPastEvent });
-        await newEvent.save();
-        res.status(201).json({ message: 'Event added successfully!' });
-    } catch (error) {
-        res.status(500).json({ message: 'Error adding event', error });
-    }
-});
+//     try {
+//         const newEvent = new EventFeedback({ eventName, image, description, date, time, venue, capacity, isPastEvent });
+//         await newEvent.save();
+//         res.status(201).json({ message: 'Event added successfully!' });
+//     } catch (error) {
+//         res.status(500).json({ message: 'Error adding event', error });
+//     }
+// });
 
 
 // Set up storage for multer
@@ -167,88 +167,136 @@ app.get('/api/events', async (req, res) => {
 });
 
 // POST endpoint for user registration
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', [
+  body('email').isEmail().withMessage('Invalid email format'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+  body('fullName').isLength({ min: 3 }).withMessage('Full name must be at least 3 characters long'),
+  body('role').isIn(['participant', 'administrator']).withMessage('Role must be either participant or administrator')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   const { email, password, fullName, role } = req.body;
 
   try {
-      // Hash the password before storing it
-      const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash(password, saltRounds);
+    // Hash the password before storing it
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-      // Create a new user
-      const newUser = new User({
-          email,
-          password: hashedPassword, // Store the hashed password
-          fullName,
-          role
-      });
+    // Create a new user
+    const newUser = new User({
+      email,
+      password: hashedPassword, // Store the hashed password
+      fullName: escapeHtml(fullName),
+      role
+    });
 
-      await newUser.save();
-      res.status(201).json({ message: 'User registered successfully!' });
+    await newUser.save();
+    res.status(201).json({ message: 'User registered successfully!' });
   } catch (error) {
-      console.error('Error registering user:', error);
-      res.status(500).json({ message: 'Error registering user', error });
+    console.error('Error registering user:', error);
+    res.status(500).json({ message: 'Error registering user', error });
   }
 });
 
 // POST endpoint for user sign-in
-app.post('/api/signin', async (req, res) => {
+app.post('/api/signin', [
+  body('email').isEmail().withMessage('Invalid email format'),
+  body('password').notEmpty().withMessage('Password is required')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   const { email, password } = req.body;
   console.log('Signing in with:', { email, password });
 
   try {
-      // Find the user by email
-      const user = await User.findOne({ email });
-      
-      // Check if user exists and if the password matches
-      if (user) {
-          // Assuming you are hashing passwords, use bcrypt to compare
-          const isMatch = await bcrypt.compare(password, user.password);
-          console.log(isMatch)
-          if (isMatch) {
-              // Return user email and role
-              res.status(200).json({ message: 'Signed in successfully!', user: { email: user.email, role: user.role } });
-          } else {
-              res.status(401).json({ message: 'Invalid email or password' });
-          }
+    // Find the user by email
+    const user = await User.findOne({ email });
+
+    // Check if user exists and if the password matches
+    if (user) {
+      // Assuming you are hashing passwords, use bcrypt to compare
+      const isMatch = await bcrypt.compare(password, user.password);
+      console.log(isMatch);
+      if (isMatch) {
+        // Return user email and role
+        res.status(200).json({ message: 'Signed in successfully!', user: { email: user.email, role: user.role } });
       } else {
-          res.status(401).json({ message: 'Invalid email or password' });
+        res.status(401).json({ message: 'Invalid email or password' });
       }
+    } else {
+      res.status(401).json({ message: 'Invalid email or password' });
+    }
   } catch (error) {
-      console.error('Error signing in:', error);
-      res.status(500).json({ message: 'Error signing in', error });
+    console.error('Error signing in:', error);
+    res.status(500).json({ message: 'Error signing in', error });
   }
 });
 
 // POST endpoint for registration 
-app.post('/api/register-activity', async (req, res) => {
-    const { fullName, email, phone, specialRequirements, eventName} = req.body;
-    console.log(req.body)
-    try {
-      // Fetch user by email
-      const user = await User.findOne({ email });
-      if (!user) {
-          return res.status(404).json({ message: 'User not found' });
-      }
-      const userId = user._id; // Get user ID
-      console.log('user ',userId)
+app.post('/api/register-activity', [
+  body('fullName').isLength({ min: 3 }).withMessage('Full name must be at least 3 characters long'),
+  body('email').isEmail().withMessage('Invalid email format'),
+  body('phone').isMobilePhone().withMessage('Invalid phone number'),
+  body('specialRequirements').optional().isString().withMessage('Special requirements must be a string'),
+  body('eventName').notEmpty().withMessage('Event name is required'),
+  body('comment').optional().isString().withMessage('Comment must be a string') // Make comment optional
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
 
-      // Fetch event by event name
-      const event = await EventFeedback.findOne({ eventName });
-      if (!event) {
-          return res.status(404).json({ message: 'Event not found' });
-      }
-      const eventId = event._id; // Get event ID
-      console.log(eventId)
+  const { fullName, email, phone, specialRequirements, eventName, comment } = req.body;
+  console.log(req.body);
 
-      const newRegistration = new Registration({ fullName, email, phone, specialRequirements, eventId, userId});
-      console.log(newRegistration)
-      await newRegistration.save();
-      res.status(201).json({ message: 'Activity registered successfully!' });
-    } catch (error) {
-        res.status(500).json({ message: 'Error registering activity', error });
+  try {
+    const sanitizedFullName = escapeHtml(fullName);
+    const sanitizedEmail = escapeHtml(email);
+    const sanitizedPhone = escapeHtml(phone);
+    const sanitizedSpecialRequirements = escapeHtml(specialRequirements);
+    const sanitizedEventName = escapeHtml(eventName);
+    const sanitizedComment = comment ? escapeHtml(comment) : null; // Sanitize comment if provided
+
+    // Fetch user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
+    const userId = user._id; // Get user ID
+    console.log('User ID:', userId);
+
+    // Fetch event by event name
+    const event = await EventFeedback.findOne({ eventName });
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    const eventId = event._id; // Get event ID
+    console.log('Event ID:', eventId);
+
+    const newRegistration = new Registration({
+      fullName: sanitizedFullName,
+      email: sanitizedEmail,
+      phone: sanitizedPhone,
+      specialRequirements: sanitizedSpecialRequirements,
+      eventId,
+      userId,
+      comment: sanitizedComment
+    });
+    console.log('New Registration:', newRegistration);
+    await newRegistration.save();
+    res.status(201).json({ message: 'Activity registered successfully!' });
+  } catch (error) {
+    console.error('Error registering activity:', error);
+    res.status(500).json({ message: 'Error registering activity', error });
+  }
 });
+
 // POST endpoint for comments
 app.post('/api/comments', async (req, res) => {
   const { activityTitle, comment } = req.body;
@@ -295,6 +343,16 @@ app.get('/api/events', async (req, res) => {
     res.status(200).json(event); // Return the event object
   } catch (error) {
     res.status(500).json({ message: 'Error fetching event', error });
+  }
+});
+// GET endpoint for fetching all event names
+app.get('/api/eventsName', async (req, res) => {
+  try {
+    const events = await EventFeedback.find().select('eventName'); // Fetch only the eventName field
+    // console.log(events)
+    res.status(200).json(events); // Return the event names as JSON
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching event names', error });
   }
 });
 
