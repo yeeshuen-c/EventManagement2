@@ -19,12 +19,13 @@ const app = express();
 
 // Middleware
 app.use(cors(
-  // {
-  //   origin:"https://exploration-bridge-fend-tan.vercel.app",
-  //   methods:["POST","GET"],
-  //   credentials: true
-  // }
+  {
+    origin:"https://exploration-bridge-fend-tan.vercel.app",
+    methods:["POST","GET"],
+    credentials: true
+  }
 ));
+app.options('*', cors()); // Enable preflight for all routes
 app.use(bodyParser.json());
 
 // // MongoDB connection
