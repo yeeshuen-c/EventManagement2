@@ -18,14 +18,16 @@ const mongoURI = "mongodb+srv://admin:admin27@cluster0.7jngb.mongodb.net/explora
 const app = express();
 
 // Middleware
-app.use(cors(
-  {
-    origin:"https://exploration-bridge-fend-tan.vercel.app",
-    methods:["POST","GET"],
-    credentials: true
-  }
-));
+app.use(
+  cors({
+    origin: "*", // Allow all origins
+    methods: ["POST", "GET"],
+    credentials: true, // This will be ignored when using "*"
+  })
+);
+
 app.options('*', cors()); // Enable preflight for all routes
+
 app.use(bodyParser.json());
 
 // // MongoDB connection

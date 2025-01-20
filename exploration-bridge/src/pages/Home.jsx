@@ -52,7 +52,8 @@ const Home = ()=> {
       const response = await axios.post('https://exploration-bridge-bend.vercel.app/api/signin', {
         email,
         password
-      });
+      },
+      { withCredentials: true });
       // Assuming the response contains the user role and email
       const { role, email: userEmail } = response.data.user; // Adjust based on your API response
       Cookies.set('userRole', role, { expires: 7 }); // Set cookie for 7 days
