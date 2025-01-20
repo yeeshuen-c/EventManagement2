@@ -20,7 +20,7 @@ const app = express();
 // Middleware
 app.use(cors(
   {
-    origin:["https://exploration-bridge-fend.vercel.app"],
+    origin:["https://exploration-bridge-fend-tan.vercel.app"],
     methods:["POST","GET"],
     credentials: true
   }
