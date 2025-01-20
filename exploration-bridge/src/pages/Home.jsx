@@ -49,7 +49,7 @@ const Home = ()=> {
     console.log('Signing in with:', { email, password }); // Log credentials for debugging
 
     try {
-      const response = await axios.post('https://exploration-bridge-bend.vercel.app/api/signin', {
+      const response = await axios.post('http://34.171.70.213:5000/api/signin', {
         email,
         password
       },

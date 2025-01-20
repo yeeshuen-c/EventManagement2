@@ -1,0 +1,7 @@
+runtime: nodejs14
+
+env_variables:
+  MONGO_URI: "your_mongo_connection_string"
+  OTHER_ENV_VARS: "values_here"
+
+instance_class: F2
