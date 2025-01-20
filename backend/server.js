@@ -10,26 +10,36 @@ const path = require('path');
 const bcrypt = require('bcrypt'); // If you installed bcrypt
 const { body, validationResult } = require('express-validator');
 const escapeHtml = require('escape-html');
+const { MongoClient, ServerApiVersion } = require('mongodb');
+
+const mongoURI = "mongodb+srv://admin:admin27@cluster0.7jngb.mongodb.net/exploration_bridge?retryWrites=true&w=majority&appName=Cluster0";
 
 // Create an instance of the Express app
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors(
+  {
+    origin:["https://exploration-bridge-fend.vercel.app"],
+    methods:["POST","GET"],
+    credentials: true
+  }
+));
 app.use(bodyParser.json());
 
-// MongoDB connection
-const mongoURI = 'mongodb://localhost:27017/exploration_bridge'; // Change this to your MongoDB URI
-mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.log(err));
+// // MongoDB connection
+// const mongoURI = 'mongodb://localhost:27017/exploration_bridge'; // Change this to your MongoDB URI
+// mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
+//   .then(() => console.log('MongoDB connected'))
+//   .catch(err => console.log(err));
+mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true });
 
 // Session management
 app.use(session({
-  secret: 'cmt_secret', // Change this to a strong secret
+  secret: 'cmt_secret', //strong secret
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({ mongoUrl: mongoURI }), // Store sessions in MongoDB
+  store: MongoStore.create({ mongoUrl: mongoURI }), //Store sessions in MongoDB
   cookie: { maxAge: 180 * 60 * 1000 } // Session expiration time (3 hours)
 }));  
 
@@ -220,7 +230,7 @@ app.post('/api/signin', [
 
     // Check if user exists and if the password matches
     if (user) {
-      // Assuming you are hashing passwords, use bcrypt to compare
+      //hashing passwords, use bcrypt to compare
       const isMatch = await bcrypt.compare(password, user.password);
       console.log(isMatch);
       if (isMatch) {
@@ -361,3 +371,9 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
+// process.on('SIGINT', async () => {
+//   await client.close();
+//   console.log("MongoDB connection closed.");
+//   process.exit(0);
+// });
