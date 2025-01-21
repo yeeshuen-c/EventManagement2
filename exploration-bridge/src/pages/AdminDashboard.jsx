@@ -34,7 +34,7 @@ const AdminDashboard = () => {
     // Fetch existing events from the backend
     const fetchEvents = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/events');
+        const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/events`);
         setEvents(response.data);
       } catch (error) {
         console.error('Error fetching events:', error);
@@ -62,14 +62,14 @@ const AdminDashboard = () => {
     }
 
     try {
-      const response = await axios.post('https://exploration-bridge-bend.vercel.app/api/events', data, {
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/events`, data, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
       setMessage(response.data.message);
       // Optionally, fetch events again to update the list
-      const updatedEvents = await axios.get('https://exploration-bridge-bend.vercel.app/api/events');
+      const updatedEvents = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/events`);
       setEvents(updatedEvents.data);
       setFormData({
         eventName: '',

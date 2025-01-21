@@ -7,26 +7,25 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const multer = require('multer');
 const path = require('path');
-const bcrypt = require('bcrypt'); // If you installed bcrypt
+const bcrypt = require('bcrypt'); 
 const { body, validationResult } = require('express-validator');
 const escapeHtml = require('escape-html');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 
 const mongoURI = "mongodb+srv://admin:admin27@cluster0.7jngb.mongodb.net/exploration_bridge?retryWrites=true&w=majority&appName=Cluster0";
 
-// Create an instance of the Express app
+//Express app
 const app = express();
 
-// Middleware
+//middleware
 app.use(
-  cors({
-    origin: "*", // Allow all origins
+  cors({                                  //CORS middleware, prevent unauthorized origins
+    origin: "http://34.171.70.213:3000", //frontend URL
     methods: ["POST", "GET"],
-    credentials: true, // This will be ignored when using "*"
+    credentials: true, // Allow credentials
   })
 );
-
-app.options('*', cors()); // Enable preflight for all routes
+app.options('*', cors()); 
 
 app.use(bodyParser.json());
 
@@ -37,13 +36,13 @@ app.use(bodyParser.json());
 //   .catch(err => console.log(err));
 mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true });
 
-// Session management
+//Session management
 app.use(session({
   secret: 'cmt_secret', //strong secret
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({ mongoUrl: mongoURI }), //Store sessions in MongoDB
-  cookie: { maxAge: 180 * 60 * 1000 } // Session expiration time (3 hours)
+  store: MongoStore.create({ mongoUrl: mongoURI }),         //store sessions info in MongoDB
+  cookie: { maxAge: 180 * 60 * 1000 }                       //set session expiration time (3 hours)
 }));  
 
 // Define a schema for events and feedback
@@ -57,17 +56,17 @@ const eventFeedbackSchema = new mongoose.Schema({
   capacity: { type: Number, required: true },
   isPastEvent: { type: Boolean, required: true },
   rating: { type: [Number] }, 
-  feedback: { type: [String] }, // Changed to an array of strings
-  experience: { type: [String] }, // Changed to an array of strings
-  improvements: { type: [String] }, // Changed to an array of strings
-  wouldRecommend: { type: [String] }, // Changed to an array of strings
+  feedback: { type: [String] }, //array of strings
+  experience: { type: [String] }, //array of strings
+  improvements: { type: [String] }, //array of strings
+  wouldRecommend: { type: [String] }, //array of strings
   category: { type: String } // Optional for feedback
 });
 
-// Create a model based on the schema
+//model based on the schema
 const EventFeedback = mongoose.model('EventFeedback', eventFeedbackSchema);
 
-// Define a schema for user registration
+//schema for user registration
 const userSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
@@ -75,10 +74,10 @@ const userSchema = new mongoose.Schema({
     role: { type: String, required: true }
 });
 
-// Create a model based on the user schema
+//model based on the user schema
 const User = mongoose.model('User', userSchema);
 
-// Define a schema for registration with comments
+//schema for registration with comments
 const registrationSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
     email: { type: String, required: true },
@@ -86,30 +85,30 @@ const registrationSchema = new mongoose.Schema({
     specialRequirements: { type: String },
     eventId: { type: mongoose.Schema.Types.ObjectId, ref: "EventFeedback", required: true }, // FK to EventFeedback
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, // FK to User
-    comment: { type: String, required: false } // New comment field
+    comment: { type: String, required: false } //New comment field
 });
 
-// Create a model based on the registration schema
+//model based on the registration schema
 const Registration = mongoose.model('Registration', registrationSchema);
 
-// POST endpoint to receive user feedback
+//POST  to receive user feedback
 app.post('/api/feedback', async (req, res) => {
   const { eventName, rating, feedback, improvements, wouldRecommend } = req.body;
   try {
-      // Fetch the existing event
+      //existing event
       const existingEvent = await EventFeedback.findOne({ eventName });
       // console.log(existingEvent)
       if (!existingEvent) {
           return res.status(404).json({ message: 'Event not found' });
       }
 
-      // Calculate new average rating
-      const existingRatings = existingEvent.rating || []; // Use an empty array if no ratings exist
+      //new average rating
+      const existingRatings = existingEvent.rating || [];     //Use an empty array if no ratings exist
       // console.log(existingRatings)
       existingRatings.push(rating); // Add the new rating
       const newAverageRating = (existingRatings.reduce((a, b) => a + b, 0) / existingRatings.length).toFixed(1); // Calculate average
       // // Update the event feedback
-      // existingEvent.rating = existingRatings; // Update ratings array
+      // existingEvent.rating = existingRatings;              // Update ratings array
       existingEvent.feedback = existingEvent.feedback ? [...existingEvent.feedback, ...feedback] : [...feedback]; // Append feedback
       existingEvent.improvements = existingEvent.improvements ? [...existingEvent.improvements, ...improvements] : [...improvements]; // Append improvements
      existingEvent.wouldRecommend = existingEvent.wouldRecommend ? [...existingEvent.wouldRecommend, wouldRecommend] : [wouldRecommend]; // Append would recommend
@@ -139,7 +138,7 @@ app.post('/api/feedback', async (req, res) => {
 // });
 
 
-// Set up storage for multer
+//Set up storage for multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
       const uploadsDir = path.join(__dirname, 'uploads'); // Ensure this path is correct
@@ -152,10 +151,10 @@ const storage = multer.diskStorage({
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Initialize multer
+//Initialize multer
 const upload = multer({ storage });
 
-// POST endpoint for adding events/activities
+//POST endpoint for adding events/activities
 app.post('/api/events', upload.single('image'), async (req, res) => {
   const { eventName, description, date, time, venue, capacity, isPastEvent } = req.body;
   const image = req.file ? req.file.path : null; // Get the path of the uploaded image
@@ -169,7 +168,7 @@ app.post('/api/events', upload.single('image'), async (req, res) => {
   }
 });
 
-// GET endpoint for fetching all events
+//GET endpoint for fetching all events
 app.get('/api/events', async (req, res) => {
   try {
       const events = await EventFeedback.find(); // Fetch all events from the database
@@ -179,8 +178,8 @@ app.get('/api/events', async (req, res) => {
   }
 });
 
-// POST endpoint for user registration
-app.post('/api/register', [
+//pOST endpoint for user registration
+app.post('/api/register', [       //input validation
   body('email').isEmail().withMessage('Invalid email format'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
   body('fullName').isLength({ min: 3 }).withMessage('Full name must be at least 3 characters long'),
@@ -194,11 +193,10 @@ app.post('/api/register', [
   const { email, password, fullName, role } = req.body;
 
   try {
-    // Hash the password before storing it
     const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const hashedPassword = await bcrypt.hash(password, saltRounds);     //hashing passwords before store into db
 
-    // Create a new user
+    //new user
     const newUser = new User({
       email,
       password: hashedPassword, // Store the hashed password
@@ -214,10 +212,10 @@ app.post('/api/register', [
   }
 });
 
-// POST endpoint for user sign-in
+//POST endpoint for user sign-in
 app.post('/api/signin', [
-  body('email').isEmail().withMessage('Invalid email format'),
-  body('password').notEmpty().withMessage('Password is required')
+  body('email').isEmail().withMessage('Invalid email format'),          //input validation
+  body('password').notEmpty().withMessage('Password is required')     //input validation
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -228,10 +226,10 @@ app.post('/api/signin', [
   console.log('Signing in with:', { email, password });
 
   try {
-    // Find the user by email
+    //Find the user by email
     const user = await User.findOne({ email });
 
-    // Check if user exists and if the password matches
+    //Check if user exists and if the password matches
     if (user) {
       //hashing passwords, use bcrypt to compare
       const isMatch = await bcrypt.compare(password, user.password);
@@ -251,8 +249,8 @@ app.post('/api/signin', [
   }
 });
 
-// POST endpoint for registration 
-app.post('/api/register-activity', [
+//POST endpoint for registration 
+app.post('/api/register-activity', [      //input validation
   body('fullName').isLength({ min: 3 }).withMessage('Full name must be at least 3 characters long'),
   body('email').isEmail().withMessage('Invalid email format'),
   body('phone').isMobilePhone().withMessage('Invalid phone number'),
@@ -276,7 +274,7 @@ app.post('/api/register-activity', [
     const sanitizedEventName = escapeHtml(eventName);
     const sanitizedComment = comment ? escapeHtml(comment) : null; // Sanitize comment if provided
 
-    // Fetch user by email
+    //Fetch user by email
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -284,12 +282,12 @@ app.post('/api/register-activity', [
     const userId = user._id; // Get user ID
     console.log('User ID:', userId);
 
-    // Fetch event by event name
+    //Fetch event by event name
     const event = await EventFeedback.findOne({ eventName });
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
-    const eventId = event._id; // Get event ID
+    const eventId = event._id; //Get event ID
     console.log('Event ID:', eventId);
 
     const newRegistration = new Registration({
@@ -310,7 +308,7 @@ app.post('/api/register-activity', [
   }
 });
 
-// POST endpoint for comments
+//POST endpoint for comments
 app.post('/api/comments', async (req, res) => {
   const { activityTitle, comment } = req.body;
 
@@ -329,7 +327,7 @@ app.post('/api/comments', async (req, res) => {
   }
 });
 
-// GET endpoint for fetching a user by email
+//get endpoint for fetching a user by email
 app.get('/api/users', async (req, res) => {
   const { email } = req.query; // Get email from query parameters
 
@@ -344,7 +342,7 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// GET endpoint for fetching an event by event name
+//get endpoint for fetching an event by event name
 app.get('/api/events', async (req, res) => {
   const { eventName } = req.query; // Get eventName from query parameters
 
@@ -358,7 +356,7 @@ app.get('/api/events', async (req, res) => {
     res.status(500).json({ message: 'Error fetching event', error });
   }
 });
-// GET endpoint for fetching all event names
+//get endpoint for fetching all event names
 app.get('/api/eventsName', async (req, res) => {
   try {
     const events = await EventFeedback.find().select('eventName'); // Fetch only the eventName field
@@ -369,8 +367,8 @@ app.get('/api/eventsName', async (req, res) => {
   }
 });
 
-// Start the server
-const PORT = process.env.PORT || 5000;
+
+const PORT = process.env.PORT || 5000;           //Start the server at port5000
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

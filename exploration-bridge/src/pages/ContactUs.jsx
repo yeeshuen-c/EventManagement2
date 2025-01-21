@@ -22,7 +22,7 @@ const ContactUs = () => {
    useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await axios.get('https://exploration-bridge-bend.vercel.app/api/eventsName'); // Adjust the endpoint as necessary
+        const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/eventsName`); // Adjust the endpoint as necessary
         setEvents(response.data); // Set the events state with the fetched data
         console.log(response.data)
       } catch (error) {
@@ -36,7 +36,7 @@ const ContactUs = () => {
     e.preventDefault();
     try {
         console.log(feedbackForm)
-        const response = await axios.post('https://exploration-bridge-bend.vercel.app/api/feedback', feedbackForm);
+        const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/feedback`, feedbackForm);
         console.log('Feedback submitted:', response.data);
         setFeedbackSubmitted(true);
         // Reset the form after submission

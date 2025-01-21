@@ -27,7 +27,7 @@ const Home = ()=> {
     const role = 'participant';
 
     try {
-      const response = await axios.post('https://exploration-bridge-bend.vercel.app/api/register', {
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/register`, {
         fullName,
         email,
         password,
@@ -49,7 +49,7 @@ const Home = ()=> {
     console.log('Signing in with:', { email, password }); // Log credentials for debugging
 
     try {
-      const response = await axios.post('http://34.171.70.213:5000/api/signin', {
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/signin`, {
         email,
         password
       },

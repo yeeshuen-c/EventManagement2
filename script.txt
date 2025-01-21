@@ -1,0 +1,35 @@
+### Slide 2: Web Hosting  
+**Speaker Notes:**  
+"Our backend server is hosted on Google Cloud Platform (GCP) using a Virtual Machine (VM) instance. GCP was chosen because it provides scalability, reliability, and full control over our hosting environment. Additionally, GCP offers tools for monitoring and managing resources, which help ensure our application remains accessible and stable. However, we encountered an issue with SSL certification because we did not have a domain name. To address this in future iterations, we plan to acquire a free or paid domain name to enable HTTPS and secure communication.  
+
+For the backend, we utilized Express.js, a minimalist web framework for Node.js. Express.js was chosen because it simplifies server creation, supports middleware, and integrates seamlessly with other tools. It handles incoming requests, routes them to the appropriate endpoints, and sends responses back to the client. This allows us to efficiently manage the backend operations of our application.  
+
+For our database, we use MongoDB Atlas, a cloud-based database service. MongoDB Atlas was selected for its ease of scalability, high availability, and built-in security features. It eliminates the need to manually set up and manage database infrastructure. The database operations are handled using Mongoose, an Object Data Modeling (ODM) library. Mongoose simplifies interaction with MongoDB by providing schema-based solutions for data modeling, validation, and querying."
+
+### Slide 3: Session Management  
+**Speaker Notes:**  
+"Session management is a critical feature for maintaining user state and delivering a seamless experience. For this purpose, we use `express-session`, a middleware for managing session data in Express.js applications. Express-session helps securely store session data on the server side and generates session IDs that are sent to the client via cookies. These session IDs are used to identify users and maintain their state across multiple requests.  
+
+To persist session data, we use `connect-mongo`, a library that integrates session storage with MongoDB. This choice was made because it ensures session data remains consistent even if the server restarts. Storing session data in MongoDB also provides durability and scalability. For example, when a user logs in, their session information is stored in the MongoDB database. If the server crashes or restarts, the session data remains intact, ensuring users do not lose their session state. Additionally, we configure session cookies to include a timeout, which automatically logs users out after a period of inactivity. This adds a layer of security by preventing unauthorized access to active sessions."
+
+### Slide 4: Security Techniques  
+**Speaker Notes:**  
+"Security is a cornerstone of our application design. To safeguard user data and prevent vulnerabilities, we have implemented the following measures:
+
+1. **Password Hashing:**
+   We use `bcrypt`, a library designed specifically for hashing passwords. Bcrypt was chosen because it applies a hashing algorithm that includes a salt, making it computationally expensive for attackers to reverse-engineer the hashed password. This ensures that even if the database is compromised, the original passwords remain secure. Passwords are hashed before storage, and during login, the input password is hashed again and compared with the stored hash to verify the user’s identity.
+
+2. **Input Validation and Sanitization:**
+   To prevent SQL injection and Cross-Site Scripting (XSS) attacks, we use `express-validator`, a library for validating and sanitizing user inputs. This tool ensures that all inputs meet predefined criteria (e.g., valid email format) and removes malicious characters from user data. By validating and sanitizing inputs, we reduce the risk of attacks that exploit improperly handled data.
+
+3. **Cross-Origin Resource Sharing (CORS):**
+   We use the `cors` middleware to enable secure communication between the frontend and backend. CORS allows requests from trusted origins while blocking unauthorized access from other domains. This helps prevent attacks such as Cross-Origin Request Forgery (CSRF), where malicious sites attempt to perform actions on behalf of authenticated users.
+
+Moving forward, we plan to implement HTTPS by acquiring a domain name and SSL certificate. HTTPS will encrypt data in transit, providing an additional layer of security to protect sensitive information such as login credentials and personal data."
+
+### General Tips for Presentation  
+- Clearly state how your hosting platform meets scalability and reliability requirements, even if there are unresolved issues like the SSL certificate.
+- Highlight the completeness and security of session management by emphasizing how it supports user roles, login/logout functionality, and session timeouts.
+- Showcase confidence in explaining security measures and their role in safeguarding the application. Address questions with clarity and detail.
+- Manage time effectively to ensure all sections are covered within the allocated 10 minutes, with time for a brief demo or Q&A session.
+

@@ -19,7 +19,7 @@ const Activities = () => {
   useEffect(() => {
     const fetchActivities = async () => {
       try {
-        const response = await axios.get('https://exploration-bridge-bend.vercel.app/api/events');
+        const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/events`);
         setActivities(response.data);
       } catch (error) {
         console.error('Error fetching activities:', error);
@@ -61,7 +61,7 @@ const Activities = () => {
     if (registrationForm.fullName && registrationForm.email && registrationForm.phone) {
       try {
         // Send the entire registration form to the backend
-        const response = await axios.post('https://exploration-bridge-bend.vercel.app/api/register-activity', registrationForm);
+        const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/register-activity`, registrationForm);
         console.log('Activity registered:', response.data);
         
         // Optionally, show a success message here
